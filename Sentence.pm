@@ -10,13 +10,14 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 
-our %EXPORT_TAGS = ( 'all' => [ qw( get_sentences get_acronyms set_acronyms add_acronyms
-				    get_file_extensions set_file_extensions add_file_extensions) ] );
-
 our @EXPORT_OK = qw( get_sentences get_acronyms set_acronyms add_acronyms
 		     get_file_extensions set_file_extensions add_file_extensions);
 
-our $VERSION = '0.06';
+our %EXPORT_TAGS = ( 'all' => \@EXPORT_OK );
+
+our @EXPORT = qw(get_sentences);
+
+our $VERSION = '0.07';
 
 # will be filled with known german abbrevations
 my %ABBREVIATIONS;
@@ -567,28 +568,27 @@ sub BEGIN {
 
 __END__
 
-=pod
-
-# POD-Documentation
 =head1 NAME
 
 Lingua::DE::Sentence - Perl extension for tokenizing german texts into their sentences.
 
 =head1 SYNOPSIS
-    
-use Lingua::DE::Sentence qw(get_sentences);
-my $sentences = get_sentences($text);
-foreach (@$sentences) {
-    print $nr++, "\t$_";
-}
+	    
+    use Lingua::DE::Sentence;
+    my $sentences = get_sentences($text);
+    foreach (@$sentences) {
+	print $nr++, "\t$_";
+    }
 
-or
+    or
 
-use Lingua::DE::Sentence qw(get_sentences);
-my ($sentences, $positions) = get_sentences($text);
-for (my $i=0; $i < scalar(@$sentences); $i++) {
-    print "\n", $nr++, "\t", $positions->[$i]->[0], "-", $positions->[$i]->[1], "\t", $sentences->[$i];
-}
+    use Lingua::DE::Sentence;
+    my ($sentences, $positions) = get_sentences($text);
+    for (my $i=0; $i < scalar(@$sentences); $i++) {
+	print "\n", $nr++, "\t", 
+	      $positions->[$i]->[0], "-", $positions->[$i]->[1], 
+	      "\t", $sentences->[$i];
+    }
 
 =head1 DESCRIPTION
 
@@ -605,7 +605,11 @@ They can be extented or exchanged if needed.
 
 =head2 EXPORT
 
-None by default.
+C<get_sentences> by default.
+
+You can further export the following methods:
+C<get_sentences>, C<get_acronyms>, C<set_acronyms>, C<add_acronyms>, 
+C<get_file_extensions>, C<set_file_extensions>, C<add_file_extensions>.
 
 =head1 ALGORITHM
 
@@ -636,13 +640,13 @@ Something like 7 .. 24 or 1, 2, ....
 
 One letter plus dot is in german nearly always an acronym. 
 Life ain't easy, in an earlier version I had implemented the following rule:
-C<Every lowercase letter like a., b. or so is interpreted as such one.
+Every lowercase letter like a., b. or so is interpreted as such one.
 Uppercase letters can be regular, e.g. "Spieler A schoss den Ball zu Spieler B.".
 I decided me to treat I, X, V and S as acronyms (I, X, V are roman letters, S. stands for "Seite").
 For the other uppercase letters, I look where I found them.
 Only if they are found in a short sentence (less than 25 chars), so they are acronyms.
 Well, that sounds strange, but it's a cool and a functional algorithm.
-Of course, something like "S.u.S.e" or "z.B." is always an abbreviation.>
+Of course, something like "S.u.S.e" or "z.B." is always an abbreviation.
 But in Names there are no rules, e.g. J. Edgar Hoover or F. A. Lange.
 So, now every one letter plus dot is an abbrevation for me.
 I'll work for a solution what looks a little bit ahead.
@@ -672,7 +676,7 @@ Something like 127.32.2345.0 or 123.5 is fixed.
 =item URLs
 
 URLs often contains dots and question marks.
-What look's like a URL will be right interpreted.
+What looks like a URL will be right interpreted.
 For me, a URL is something starting with http, file, ftp, ... .
 Or it's a sequence of lowercase words divided by some punctations.
 Lowercase is important, because many guys don't write a whitespace after the dot.
@@ -690,7 +694,7 @@ In many documents are strings like "readme.html", "dokument1.doc" and so on.
 I have a short list of usual file extensions.
 If the word after the dot has only consonants (like html, ...),
 it's a file extension (or anything else, strange) for me too.
-I hope that it solves the problem
+I hope that it solves the problem.
 
 =back
 
@@ -698,8 +702,6 @@ Allthough these are many rules, they are implemented to run fast.
 There are no substitutions, no $`, ... .
 
 =head1 FUNCTIONS
-
-All functions used should be requested in the 'use' clause. None is exported by default.
 
 =over 7
 

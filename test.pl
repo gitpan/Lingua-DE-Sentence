@@ -12,13 +12,8 @@ use Lingua::DE::Sentence;
 $loaded = 1;
 print "ok 1\n";
 
-######################### End of black magic.
 
-# Insert your test code below (better if it prints "ok 13"
-# (correspondingly "not ok 13") depending on the success of chunk 13
-# of the test code):
-
-use Lingua::DE::Sentence qw(get_sentences);
+use Lingua::DE::Sentence;
 
 $splitting = 1;
 $test_data = join ("", (<DATA>));
