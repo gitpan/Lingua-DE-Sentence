@@ -15,7 +15,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw( get_sentences get_acronyms set_acronyms add_
 our @EXPORT_OK = qw( get_sentences get_acronyms set_acronyms add_acronyms
 		     get_file_extensions set_file_extensions add_file_extensions);
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 # will be filled with known german abbrevations
 my %ABBREVATIONS;
@@ -28,6 +28,9 @@ my %FILE_EXTENSIONS;
 my $CONSONANT = qr/
     (?>ff|ll|sch|ch|st|ss|mm|nn|pp|rr|tt|ck|pf|
      [bcdfghklmnpqrstvwxz])/x;
+
+# common vocals in german
+my $VOCAL = qr/[aeouiäöü]/;
 
 
 # the characters that can be between sentences  (chr(160) is a nonbreaking whitespace)
@@ -51,7 +54,7 @@ sub get_sentences {
     my ($leading_chars,$sent,$rest);
     my $last_pos = 0;
     while ($text =~ m/ (?!\w)                      # Sentence-End not at word characters
-                       (?:                         
+	               (?:                         
                           # normal end of Sentence like .?!
 	                  [$PUNCT]                 # End of Sentence could be a punctation
 	                  (?![^\w\r\n]*[$PUNCT,])  # and not as the first of some punctations (incl. comma)
@@ -67,7 +70,7 @@ sub get_sentences {
 	    = substr($text,$last_pos,-$last_pos+pos($text)) 
 		=~ /^($LEADING_SENTENCE_CHAR*)(.*)$/s;
 	$rest = substr($text,pos($text),100);
-
+	
 	# check only special cases, if not at end of text
 	if ($rest =~ m/\S/s) {
 	    # fix empty sentences
@@ -76,28 +79,30 @@ sub get_sentences {
 	    
             # fix bla bla" sagte er.
 	    # in general it's a word followed by " or ' and followed by a lowercase word	    
-	    $sent =~ /[$QUOTE]$/ && $rest =~ m/^[$QUOTE()\s]*(\w)/ && $1 eq lc($1) && next;
+	    $sent =~ /[$QUOTE]$/o && $rest =~ m/^[$QUOTE()\s]*([[:lower:]])/o && next;
 	    
 	    # fix enumerations
-	    $sent =~ /\W\.\.[\"\'\)]?$/ && $rest !~ /^(?:\s*$NL){2}/o && next;
+	    $sent =~ /\W\.\.[$QUOTE\)]?$/o && $rest !~ /^(?:\s*$NL){2}/o && next;
 	          
 	    # Abbrevations
 	    # these are lower-Case words of length 1 (in german always)
 	    # or in Abbr.-List (ignoriers Lower/UpperCase)
 	    # or consists of only consonants
 	    # or ends too curious, that means 4 consonants at the end
-	    if ($sent =~ /([^\W\d]+)\.[\"\'\)]*?$/) {
+	    if ($sent =~ /([^\W\d]+)\.[$QUOTE\)]*?$/o) {
 		length($1) == 1 and next;
 		$_ = lc($1);
 		$ABBREVATIONS{$_} and next;
 		/^$CONSONANT+$/o and next;
+		/^$VOCAL+$/o and next;
 		/$CONSONANT{4,}$/o and next; 
 	    }
 
 	    # Ordinal-Numbers like 1., 2., ...
 	    # I treat all numbers till 39 as ordinal
-	    # plus the numbers ending on ..00. 
-	    $sent =~ /(?<![\w,])(?=\d)(?:[0123]?[0-9]|00)\.$/ && next;
+	    # plus the numbers ending on ..00
+	    $sent =~ /\d\.$/ && $sent =~ /(?<![\w\.\,])(\d+)\.$/ &&
+		(($1 < 40) || (($_ = $1) =~ /00$/ and $_ != 1900 and $_ != 2000 and $_ != 2100)) && next;
 
 	    # Rational Numbers, IP-Numbers, Phonenumbers like 127.32.2345
 	    $sent =~ /\.$/ && $rest =~ /^\d/ && next;
@@ -110,11 +115,11 @@ sub get_sentences {
                         (?<!\.) \.$ 
                       }xm 
 		&& next;
-	    $rest =~ /^([^\W\d]\w*[\.\?:\/]?)+/ && lc($1) eq $1 
-		&& $sent =~ /(\w+[\.\?:\/])+$/ && lc($1) eq $1 && next;
+	    $rest =~ /^([[:lower:]][[:lower:]\d]*[\.\?:\/]?)+/o  
+		&& $sent =~ /([[:lower:]\d]+[\.\?:\/])+$/o && next;
 
 	    # fix something like: Ich muss mich auf verschiedene (!) Browser einrichten.
-	    $sent =~ / \(  [\.!?\"\'\)]+  $/x && next;
+	    $sent =~ / \(  [$QUOTE\.!?\)]+  $/xo && next;
 
 	    # fix filenames like "document1.doc"
 	    # look in extension list or extension consists of consonants
@@ -614,7 +619,7 @@ Another form of abbreviations are known acronyms,
 I've listed ca. 370 ones. I hope, that's enough for the most cases.
 
 Last I look, wether the word before the dot ends with a lot of consonants.
-Or the word has only consonants as letters.
+Or the word has only consonants or only vocals as letters.
 So I'm able, to interprete "Dtschl." in the right way.
 
 =item Ordinal-Numbers
@@ -624,6 +629,7 @@ In more than 50 % these are just 1st, 2nd and so on.
 So a sentence cannot end on these numbers.
 Of course, to say: "Ich wurde geboren im Jahre 1843." is O.K..
 Numbers ending at 00 like 100, 1000, ... are even more often used as 100th, 1000th, ... .
+Of course, 1900, 2000 and 2100 are year numbers, not 1900th.
 I respected it, too.
 
 =item Rational Numbers, IP-Numbers, Phone-Numbers
