@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use locale;
 
+use POSIX qw(locale_h);
 require Exporter;
 
 our @ISA = qw(Exporter);
@@ -15,10 +16,10 @@ our %EXPORT_TAGS = ( 'all' => [ qw( get_sentences get_acronyms set_acronyms add_
 our @EXPORT_OK = qw( get_sentences get_acronyms set_acronyms add_acronyms
 		     get_file_extensions set_file_extensions add_file_extensions);
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 # will be filled with known german abbrevations
-my %ABBREVATIONS;
+my %ABBREVIATIONS;
 # will be filled with some known file extensions
 my %FILE_EXTENSIONS;
 
@@ -32,9 +33,8 @@ my $CONSONANT = qr/
 # common vocals in german
 my $VOCAL = qr/[aeouiäöü]/;
 
-
-# the characters that can be between sentences  (chr(160) is a nonbreaking whitespace)
-my $LEADING_SENTENCE_CHAR = '[\s'.chr(160).'?!>\#\.\-\*]';
+# the characters that can be between sentences  (chr(150) is a dash, chr(160) is a nonbreaking whitespace)
+my $LEADING_SENTENCE_CHAR = '[\s'.chr(150).chr(160).'?!>\#\.\-\*]';
 
 # regexp for new lines (even DOS, or MAC - Mode)
 my $NL = qr/(?>\r\n|\n|\r)/;
@@ -48,6 +48,10 @@ my $PUNCT = q{\.!?};
 # Preloaded methods go here.
 
 sub get_sentences {
+    # Set german locale
+    my $old_locale = setlocale(LC_CTYPE);
+    setlocale(LC_CTYPE, "de_DE");
+
     my ($text) = @_;
     my @pos = ();
     my @sentences;
@@ -71,11 +75,12 @@ sub get_sentences {
 		=~ /^($LEADING_SENTENCE_CHAR*)(.*)$/s;
 	$rest = substr($text,pos($text),100);
 	
-	# check only special cases, if not at end of text
-	if ($rest =~ m/\S/s) {
-	    # fix empty sentences
-	    # every sentence has to include anything
-	    $sent !~ m/\w/ && next;
+	# fix empty sentences
+	# every sentence has to include anything
+	$sent !~ m/\w/ && next;
+	
+        # check only special cases, if not at end of text or paragraph
+	if ($rest =~ m/^(?!\s*?$NL\s*?$NL)\s*\S/so) {
 	    
             # fix bla bla" sagte er.
 	    # in general it's a word followed by " or ' and followed by a lowercase word	    
@@ -92,7 +97,7 @@ sub get_sentences {
 	    if ($sent =~ /([^\W\d]+)\.[$QUOTE\)]*?$/o) {
 		length($1) == 1 and next;
 		$_ = lc($1);
-		$ABBREVATIONS{$_} and next;
+		$ABBREVIATIONS{$_} and next;
 		/^$CONSONANT+$/o and next;
 		/^$VOCAL+$/o and next;
 		/$CONSONANT{4,}$/o and next; 
@@ -133,10 +138,36 @@ sub get_sentences {
 	push @pos, [pos($text) - length($sent) => pos($text)] if wantarray;
     }
     return wantarray ? (\@sentences, \@pos) : \@sentences;
+
+    setlocale(LC_CTYPE, $old_locale);
+}
+
+sub get_acronyms {
+    return keys %ABBREVIATIONS;
+}
+
+sub set_acronyms {
+    %ABBREVIATIONS = map {$_ => 1} @_;
+}
+
+sub add_acronyms {
+    $ABBREVIATIONS{$_} = 1 foreach (@_);
+}
+
+sub get_file_extensions {
+    return keys %FILE_EXTENSIONS;
+}
+
+sub set_file_extensions {
+    %FILE_EXTENSIONS = map {$_ => 1} @_;
+}
+
+sub add_file_extensions {
+    $FILE_EXTENSIONS{$_} = 1 foreach (@_);
 }
 
 sub BEGIN {
-    $ABBREVATIONS{$_} = 1 foreach qw(
+    $ABBREVIATIONS{$_} = 1 foreach qw(
 				     abb
 				     abf
 				     abg
@@ -536,6 +567,8 @@ sub BEGIN {
 
 __END__
 
+=pod
+
 # POD-Documentation
 =head1 NAME
 
@@ -735,8 +768,9 @@ You should use the right form of quoting: <<quote>>.
 There are texts with such a form of quoting: ,,quote''.
 Well, the commata are removed, too.
 
-At the moment, I use the use locale; command.
-Of course, If you haven't german as locale setting in your OS,
+This module tries to use a german locale setting.
+It tries to set the locale on a POSIX OS to de_DE.
+Neither on a non POSIX OS, neither you have installed german language locales,
 the module won't function.
 
 One of the greatest bugs is surely my bad English. Sorry.
