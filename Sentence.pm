@@ -16,7 +16,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw( get_sentences get_acronyms set_acronyms add_
 our @EXPORT_OK = qw( get_sentences get_acronyms set_acronyms add_acronyms
 		     get_file_extensions set_file_extensions add_file_extensions);
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 # will be filled with known german abbrevations
 my %ABBREVIATIONS;

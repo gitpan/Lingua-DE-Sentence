@@ -35,3 +35,8 @@ Revision history for Perl extension Lingua::DE::Sentence.
 		abbreviations before an empty line are sentence endings now
 
 		Thanks a lot to Andreas Marcel Riechert
+
+0.06	2001-09-25
+		READEME - File really added
+
+		the output for the functional test was changed to "ok 2\n" (\n had been left in 0.05)

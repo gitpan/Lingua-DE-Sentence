@@ -39,7 +39,7 @@ for ($i=0; $i<scalar @exp_sent; $i++) {
 	last;
     }
 }
-print "ok 2" if $splitting;
+print "ok 2\n" if $splitting;
 
 __DATA__
 
